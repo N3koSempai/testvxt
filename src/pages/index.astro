@@ -1,0 +1,307 @@
+---
+const profiles = [{ label: "Zone 66", value: "zone66" }];
+const channels = ["0", "1", "2"];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LISNR Tone Generator</title>
+  </head>
+  <body>
+    <main>
+      <h1>LISNR Tone Generator</h1>
+      <p class="intro">
+        Create a tone with the settings below to embed it within your VXT
+        content.
+      </p>
+
+      <form id="tone-form">
+        <label class="field">
+          <span class="label">Tone Profile:</span>
+          <select id="profile" name="profile">
+            {profiles.map((p) => <option value={p.value}>{p.label}</option>)}
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="label">Data to Transmit:</span>
+          <textarea id="data" name="data" rows="3">ABC123</textarea>
+        </label>
+
+        <fieldset class="field">
+          <legend class="label">Channels:</legend>
+          <div class="channels">
+            {
+              channels.map((c) => (
+                <label class="radio">
+                  <input
+                    type="radio"
+                    name="channel"
+                    value={c}
+                    checked={c === "1"}
+                  />
+                  <span class="ring" />
+                  {c}
+                </label>
+              ))
+            }
+          </div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend class="label">More Options:</legend>
+          <label class="toggle">
+            <input type="checkbox" id="encrypt" name="encrypt" />
+            <span class="track" />
+            Encrypt
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="tonelock" name="tonelock" />
+            <span class="track" />
+            Tonelock
+          </label>
+        </fieldset>
+
+        <button type="submit">Generate Tone</button>
+      </form>
+
+      <section id="result" hidden>
+        <p class="label">Tone URL</p>
+        <textarea id="result-url" rows="4" readonly></textarea>
+        <button type="button" id="copy" class="secondary">Copy</button>
+      </section>
+    </main>
+
+    <script>
+      const TONES_ENDPOINT = "https://tones-dev.lisnr.com/";
+
+      function textToHexPayload(text: string) {
+        return Array.from(new TextEncoder().encode(text))
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join("");
+      }
+
+      // Punto único donde se arma la URL. El formato de los parámetros
+      // (nombres y valores) es una suposición: ajustar aquí si la API es otra.
+      // El API Token NO se incluye: lo añade index.js de la extension.
+      function buildToneUrl(config: {
+        profile: string;
+        data: string;
+        channel: string;
+        encrypt: boolean;
+        tonelock: boolean;
+      }) {
+        const params = new URLSearchParams({
+          profile: config.profile,
+          payload: textToHexPayload(config.data),
+          channel: config.channel,
+          format: "mp3",
+          zip: "false",
+        });
+        if (config.encrypt) params.set("encrypt", "true");
+        if (config.tonelock) params.set("tonelock", "true");
+        return `${TONES_ENDPOINT}?${params.toString()}`;
+      }
+
+      const form = document.getElementById("tone-form") as HTMLFormElement;
+      const result = document.getElementById("result") as HTMLElement;
+      const resultUrl = document.getElementById(
+        "result-url",
+      ) as HTMLTextAreaElement;
+      const copyButton = document.getElementById("copy") as HTMLButtonElement;
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const config = {
+          profile: String(formData.get("profile")),
+          data: String(formData.get("data") || "").trim() || "ABC123",
+          channel: String(formData.get("channel")),
+          encrypt: formData.get("encrypt") === "on",
+          tonelock: formData.get("tonelock") === "on",
+        };
+        const url = buildToneUrl(config);
+
+        resultUrl.value = url;
+        result.hidden = false;
+
+        // Intento de devolver los datos al padre (VXT). No se sabe si VXT
+        // escucha este mensaje; la vía documentada es dialogAuthValidation.
+        if (window.parent !== window) {
+          window.parent.postMessage({ type: "lisnr-tone-config", url, config }, "*");
+        }
+      });
+
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(resultUrl.value);
+          copyButton.textContent = "Copied";
+        } catch {
+          resultUrl.select();
+        }
+      });
+    </script>
+
+    <style is:global>
+      :root {
+        --bg: #fafafa;
+        --text: #3d3d3d;
+        --blue: #5a7fe0;
+        --shadow: 0 8px 24px rgba(90, 127, 224, 0.2);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main {
+        max-width: 420px;
+        margin: 0 auto;
+        padding: 32px 24px 40px;
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 28px;
+        line-height: 1.25;
+        font-weight: 700;
+      }
+      .intro {
+        margin: 0 0 28px;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      .field {
+        display: block;
+        margin: 0 0 24px;
+        padding: 0;
+        border: 0;
+      }
+      .label {
+        display: block;
+        margin: 0 0 10px;
+        padding: 0;
+        font-weight: 700;
+        font-size: 15px;
+      }
+      select,
+      textarea {
+        width: 100%;
+        border: 0;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: var(--shadow);
+        font: inherit;
+        color: var(--text);
+        padding: 14px 18px;
+      }
+      select {
+        color: var(--blue);
+        font-weight: 700;
+        text-align: center;
+      }
+      textarea {
+        resize: vertical;
+        text-align: left;
+      }
+      .channels {
+        display: flex;
+        justify-content: space-around;
+      }
+      .radio,
+      .toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-size: 15px;
+      }
+      .toggle {
+        display: flex;
+        margin: 0 0 12px;
+        padding-left: 24px;
+      }
+      input[type="radio"],
+      input[type="checkbox"] {
+        position: absolute;
+        opacity: 0;
+      }
+      .ring {
+        width: 26px;
+        height: 26px;
+        border: 3px solid var(--blue);
+        border-radius: 50%;
+        box-shadow: var(--shadow);
+        background: #fff;
+      }
+      input[type="radio"]:checked + .ring {
+        background: radial-gradient(circle, var(--blue) 45%, #fff 50%);
+      }
+      .track {
+        position: relative;
+        width: 44px;
+        height: 22px;
+        border-radius: 11px;
+        background: #d9d9d9;
+        transition: background 0.15s;
+      }
+      .track::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        transition: transform 0.15s;
+      }
+      input[type="checkbox"]:checked + .track {
+        background: var(--blue);
+      }
+      input[type="checkbox"]:checked + .track::after {
+        transform: translateX(22px);
+      }
+      input:focus-visible + .ring,
+      input:focus-visible + .track,
+      select:focus-visible,
+      textarea:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: 2px;
+      }
+      button {
+        width: 100%;
+        margin-top: 8px;
+        padding: 14px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--blue);
+        color: #fff;
+        font: inherit;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      button.secondary {
+        width: auto;
+        padding: 10px 24px;
+        margin-top: 12px;
+      }
+      #result {
+        margin-top: 28px;
+      }
+      #result textarea {
+        font-size: 12px;
+        word-break: break-all;
+      }
+    </style>
+  </body>
+</html>
