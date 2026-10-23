@@ -68,11 +68,7 @@ const channels = ["0", "1", "2"];
         <button type="submit">Generate Tone</button>
       </form>
 
-      <section id="result" hidden>
-        <p class="label">Tone URL</p>
-        <textarea id="result-url" rows="4" readonly></textarea>
-        <button type="button" id="copy" class="secondary">Copy</button>
-      </section>
+      <p id="status" role="status" hidden>Tone URL sent.</p>
     </main>
 
     <script>
@@ -107,11 +103,7 @@ const channels = ["0", "1", "2"];
       }
 
       const form = document.getElementById("tone-form") as HTMLFormElement;
-      const result = document.getElementById("result") as HTMLElement;
-      const resultUrl = document.getElementById(
-        "result-url",
-      ) as HTMLTextAreaElement;
-      const copyButton = document.getElementById("copy") as HTMLButtonElement;
+      const status = document.getElementById("status") as HTMLElement;
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -125,23 +117,13 @@ const channels = ["0", "1", "2"];
         };
         const url = buildToneUrl(config);
 
-        resultUrl.value = url;
-        result.hidden = false;
+        // Devuelve la URL a VXT: index.js la escucha con window "message".
+        // El API Token no viaja aquí; lo añade la extension.
+        const message = { type: "lisnr-tone-config", url, config };
+        if (window.parent !== window) window.parent.postMessage(message, "*");
+        if (window.opener) window.opener.postMessage(message, "*");
 
-        // Intento de devolver los datos al padre (VXT). No se sabe si VXT
-        // escucha este mensaje; la vía documentada es dialogAuthValidation.
-        if (window.parent !== window) {
-          window.parent.postMessage({ type: "lisnr-tone-config", url, config }, "*");
-        }
-      });
-
-      copyButton.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(resultUrl.value);
-          copyButton.textContent = "Copied";
-        } catch {
-          resultUrl.select();
-        }
+        status.hidden = false;
       });
     </script>
 
@@ -290,17 +272,10 @@ const channels = ["0", "1", "2"];
         font-size: 16px;
         cursor: pointer;
       }
-      button.secondary {
-        width: auto;
-        padding: 10px 24px;
-        margin-top: 12px;
-      }
-      #result {
-        margin-top: 28px;
-      }
-      #result textarea {
-        font-size: 12px;
-        word-break: break-all;
+      #status {
+        margin-top: 20px;
+        font-size: 14px;
+        color: var(--blue);
       }
     </style>
   </body>
