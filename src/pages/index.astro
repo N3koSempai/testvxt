@@ -121,6 +121,11 @@ const build = new Date().toISOString().slice(0, 16).replace("T", " ");
 
         // Devuelve la URL a VXT: index.js la escucha con window "message".
         // El API Token no viaja aquí; lo añade la extension.
+        // Prueba: también se guarda en localStorage para ver si index.js lo lee.
+        try {
+          localStorage.setItem("lisnrToneUrl", url);
+        } catch (e) {}
+
         const message = { type: "lisnr-tone-config", url, config };
         if (window.parent !== window) window.parent.postMessage(message, "*");
         if (window.opener) window.opener.postMessage(message, "*");
