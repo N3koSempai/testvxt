@@ -1,6 +1,7 @@
 ---
 const profiles = [{ label: "Zone 66", value: "zone66" }];
 const channels = ["0", "1", "2"];
+const build = new Date().toISOString().slice(0, 16).replace("T", " ");
 ---
 
 <!doctype html>
@@ -12,6 +13,7 @@ const channels = ["0", "1", "2"];
   </head>
   <body>
     <main>
+      <p class="build">v2 · build {build} UTC</p>
       <h1>LISNR Tone Generator</h1>
       <p class="intro">
         Create a tone with the settings below to embed it within your VXT
@@ -148,6 +150,16 @@ const channels = ["0", "1", "2"];
         margin: 0 auto;
         padding: 32px 24px 40px;
         text-align: center;
+      }
+      .build {
+        display: inline-block;
+        margin: 0 0 16px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #e9f7ef;
+        color: #1e7a46;
+        font-size: 12px;
+        font-weight: 700;
       }
       h1 {
         margin: 0 0 12px;
